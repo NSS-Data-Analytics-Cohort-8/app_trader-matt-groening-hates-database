@@ -58,12 +58,13 @@ GROUP BY DISTINCT price
 
 SELECT 
 	DISTINCT sub.name,
-	sub.price as asp_price,
-	CAST (psp.price AS money) as psp_price,
-	psp.rating as psp_rating,
-	sub.rating as asp_rating,
-	(SELECT ROUND(((psp.rating+sub.rating)*2)/2)/2) as full_avg
--- 	(SELECT (ROUND(((psp.rating+sub.rating)*2)/2)/2/.5) as expected_lifespan
+	CAST(sub.price as money) as asp_price,
+	CAST(psp.price AS money) as psp_price,
+	CASE WHEN CAST(sub.price as money)+CAST (psp.price AS money) <= '$2.00' THEN '$10,000.00'  
+		WHEN CAST(sub.price as money) < CAST (psp.price AS money) THEN CAST(psp.price AS money)*10000
+		WHEN CAST(sub.price as money) >= CAST (psp.price AS money) THEN CAST(sub.price AS money)*10000
+		END,
+	(SELECT (ROUND(((psp.rating+sub.rating)*2)/2)/2)/.5) as lifespan
 FROM 
 	(SELECT
 		name,
