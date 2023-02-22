@@ -2,10 +2,23 @@
 -- Based on research completed prior to launching App Trader as a company, you can assume the following:
 
 -- a. App Trader will purchase apps for 10,000 times the price of the app. For apps that are priced from free up to $1.00, the purchase price is $10,000.
-SELECT name, price*10000
+SELECT 
+app_store_apps.name,  
+currency, 
+app_store_apps.price, 
+play_store_apps.price, 
+app_store_apps.price, 
+app_store_apps.review_count, 
+play_store_apps.review_count, 
+app_store_apps.rating, 
+play_store_apps.rating, 
+app_store_apps.content_rating, 
+primary_genre, 
+type, (app_store_apps.price * 10000) AS purchase_price, (5000 * (CASE WHEN category IS NOT NULL THEN 2 ELSE 1 END)) AS monthly_earnings, 1000 AS monthly_marketing_cost, (app_store_apps.rating * 2 + 1) AS projected_lifespan_years
 FROM app_store_apps 
-	JOIN play_store_apps
-ORDER BY price DESC;
+INNER JOIN play_store_apps
+ON app_store_apps.name = play_store_apps.name;
+
 
 -- For example, an app that costs $2.00 will be purchased for $20,000.
 
