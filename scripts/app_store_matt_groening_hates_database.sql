@@ -32,44 +32,61 @@
 
 -- b. Develop a Top 10 List of the apps that App Trader should buy.
 
-SELECT *
+SELECT 
+	name,
+	cast(price as money)
 FROM play_store_apps
+WHERE cast(price as money) > '$0.99'
+	AND cast(price as money) < '$1.99'
 
 SELECT *
 FROM app_store_apps
 
--- SELECT DISTINCT CAST(price AS money),
--- 	(SELECT COUNT(CAST(price AS money)))
--- FROM play_store_apps
--- GROUP BY DISTINCT CAST(price AS money)
+						-- SELECT DISTINCT CAST(price AS money),
+						-- 	(SELECT COUNT(CAST(price AS money)))
+						-- FROM play_store_apps
+						-- GROUP BY DISTINCT CAST(price AS money)
 
--- SELECT DISTINCT price,
--- 	(SELECT COUNT(price))
--- FROM app_store_apps
--- GROUP BY DISTINCT price
+						-- SELECT DISTINCT price,
+						-- 	(SELECT COUNT(price))
+						-- FROM app_store_apps
+						-- GROUP BY DISTINCT price
 
-SELECT DISTINCT price,
-	(SELECT COUNT(price)), price_count
-	(SELECT ROUND(AVG(rating), 2)) as avg_rating
-	(SELECT (avg_rating/2)*4000-price*10000)
-FROM app_store_apps
-GROUP BY DISTINCT price
+						-- SELECT DISTINCT price,
+						-- 	(SELECT COUNT(price)), price_count
+						-- 	(SELECT ROUND(AVG(rating), 2)) as avg_rating
+						-- 	(SELECT (avg_rating/2)*4000-price*10000)
+						-- FROM app_store_apps
+						-- GROUP BY DISTINCT price
+						
+								--
 
 
 SELECT 
-	DISTINCT sub.name,
-	CAST(sub.price as money) as asp_price,
-	CAST(psp.price AS money) as psp_price,
-	CASE WHEN CAST(sub.price as money)+CAST (psp.price AS money) <= '$2.00' THEN '$10,000.00'  
+	DISTINCT sub.name as app_name,
+	
+	(SELECT (SUM(CAST(sub.review_count AS int)))) as asp_review,
+	
+	(SELECT (SUM(CAST(psp.review_count AS int)))) as psp_review,
+	
+	CASE WHEN CAST(sub.price as money) + CAST (psp.price AS money) <= '$2.00' THEN '$10,000.00'  
 		WHEN CAST(sub.price as money) < CAST (psp.price AS money) THEN CAST(psp.price AS money)*10000
 		WHEN CAST(sub.price as money) >= CAST (psp.price AS money) THEN CAST(sub.price AS money)*10000
-		END,
-	(SELECT (ROUND(((psp.rating+sub.rating)*2)/2)/2)/.5) as lifespan
+		END AS purchase_price,		
+	
+	(SELECT CAST(((ROUND(((psp.rating+sub.rating)*2)/2)/2)/.5) AS int)) AS lifespan,
+	
+	(SELECT CAST((((ROUND(((psp.rating+sub.rating)*2)/2)/2)/.5)*36000) as money)-
+			(CASE WHEN CAST(sub.price as money)+CAST (psp.price AS money) <= '$2.00' THEN '$10,000.00'  
+				WHEN CAST(sub.price as money) < CAST (psp.price AS money) THEN CAST(psp.price AS money)*10000
+				WHEN CAST(sub.price as money) >= CAST (psp.price AS money) THEN CAST(sub.price AS money)*10000
+				END)) AS lifetime_profit
 FROM 
 	(SELECT
 		name,
 		price,
-		rating
+		rating,
+	 	review_count
 	FROM app_store_apps
 	WHERE name IN
 		(SELECT name
@@ -79,3 +96,19 @@ FROM
 		FROM play_store_apps)) as sub
 INNER JOIN play_store_apps as psp
 USING (name)
+GROUP BY sub.name, purchase_price, lifespan, lifetime_profit
+ORDER BY lifetime_profit DESC;
+
+
+--VALIDATION
+
+SELECT *
+FROM app_store_apps
+WHERE name IN
+	(SELECT 
+-- 		name
+-- 	 	, CAST(price as money)
+	 *
+	FROM play_store_apps
+	WHERE cast(price as money) > '$0.99'
+		AND cast(price as money) < '$1.99')
