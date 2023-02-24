@@ -2,22 +2,7 @@
 -- Based on research completed prior to launching App Trader as a company, you can assume the following:
 
 -- a. App Trader will purchase apps for 10,000 times the price of the app. For apps that are priced from free up to $1.00, the purchase price is $10,000.
-SELECT 
-app_store_apps.name,  
-currency, 
-app_store_apps.price, 
-play_store_apps.price, 
-app_store_apps.price, 
-app_store_apps.review_count, 
-play_store_apps.review_count, 
-app_store_apps.rating, 
-play_store_apps.rating, 
-app_store_apps.content_rating, 
-primary_genre, 
-type, (app_store_apps.price * 10000) AS purchase_price, (5000 * (CASE WHEN category IS NOT NULL THEN 2 ELSE 1 END)) AS monthly_earnings, 1000 AS monthly_marketing_cost, (app_store_apps.rating * 2 + 1) AS projected_lifespan_years
-FROM app_store_apps 
-INNER JOIN play_store_apps
-ON app_store_apps.name = play_store_apps.name;
+
 
 
 -- For example, an app that costs $2.00 will be purchased for $20,000.
@@ -25,7 +10,56 @@ ON app_store_apps.name = play_store_apps.name;
 -- The cost of an app is not affected by how many app stores it is on. A $1.00 app on the Apple app store will cost the same as a $1.00 app on both stores.
 
 -- If an app is on both stores, it's purchase price will be calculated based off of the highest app price between the two stores.
-
+WITH android_apps AS (
+	SELECT 
+		name, 
+		category, 
+		rating, 
+		review_count, 
+		size, 
+		install_count, 
+		type, 
+		(CASE 
+		 	WHEN Left(price, 1) = '$' THEN 
+				CAST(substring(price from 2)AS FLOAT)
+			ELSE 
+		 		CAST(price AS FLOAT) 
+		 END), 
+		content_rating, 
+		genres 
+	FROM 
+		play_store_apps
+)
+SELECT name,
+    'apple' AS store,
+    CASE
+        WHEN price = 0 THEN 1
+        ELSE price 
+    END * 10000 AS purchase_price
+FROM app_store_apps 
+WHERE name NOT IN (SELECT name FROM play_store_apps)
+UNION
+SELECT name,
+    'android' AS store,
+    (CASE
+        WHEN price = 0 THEN 1
+        ELSE price
+    END) * 10000 AS purchase_price 
+FROM android_apps
+WHERE name NOT IN (SELECT name FROM app_store_apps)
+UNION
+SELECT apple.name, 
+	CASE
+        WHEN apple.price > playstore.price THEN 'apple'
+        ELSE 'android'
+	END AS store,
+    (CASE
+        WHEN apple.price > playstore.price THEN apple.price
+        ELSE playstore.price 
+    END) * 10000 AS purchase_price
+FROM app_store_apps apple
+INNER JOIN android_apps playstore ON apple.name = playstore.name
+ORDER BY purchase_price DESC;
 -- b. Apps earn $5000 per month, per app store it is on, from in-app advertising and in-app purchases, regardless of the price of the app.
 
 -- An app that costs $200,000 will make the same per month as an app that costs $1.00.
