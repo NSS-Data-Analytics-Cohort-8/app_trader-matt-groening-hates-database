@@ -45,7 +45,7 @@ WHERE cast(price as money) > '$0.99'
 SELECT *
 FROM app_store_apps
 
-
+SELECT *
 FROM 
 	(SELECT *
 	FROM app_store_apps
@@ -57,6 +57,7 @@ FROM
 		FROM play_store_apps)) as sub
 INNER JOIN play_store_apps as psp
 USING (name)
+WHERE sub.name LIKE 'Solitaire'
 
 						-- SELECT DISTINCT CAST(price AS money),
 						-- 	(SELECT COUNT(CAST(price AS money)))
@@ -78,35 +79,6 @@ USING (name)
 								--
 
 
-SELECT 
-	DISTINCT sub.name as app_name,
-	(SELECT (SUM(CAST(sub.review_count AS int)))) + (SUM(CAST(psp.review_count AS int))) as total_review,
-	CASE WHEN CAST(sub.price as money) + CAST (psp.price AS money) <= '$2.00' THEN '$10,000.00' 
-		WHEN CAST(sub.price as money) < CAST (psp.price AS money) THEN CAST(psp.price AS money)*10000
-		WHEN CAST(sub.price as money) >= CAST (psp.price AS money) THEN CAST(sub.price AS money)*10000
-		END AS purchase_price,
-	(SELECT CAST((ROUND (psp.rating+sub.rating, 0)/2)/.5 AS int)) as lifespan,
-	(SELECT CAST(((ROUND (psp.rating+sub.rating, 0)/2)/.5)*108000 AS money)-
-			(CASE WHEN CAST(sub.price as money)+CAST (psp.price AS money) <= '$2.00' THEN '$10,000.00'  
-				WHEN CAST(sub.price as money) < CAST (psp.price AS money) THEN CAST(psp.price AS money)*10000
-				WHEN CAST(sub.price as money) >= CAST (psp.price AS money) THEN CAST(sub.price AS money)*10000
-				END)) AS lifetime_profit
-FROM 
-	(SELECT *
-	FROM app_store_apps
-	WHERE name IN
-		(SELECT name
-		FROM app_store_apps
-		INTERSECT
-		SELECT name
-		FROM play_store_apps)) as sub
-INNER JOIN play_store_apps as psp
-USING (name)
-GROUP BY sub.name, sub.rating, psp.rating, purchase_price,lifetime_profit, sub.primary_genre
-ORDER BY lifetime_profit DESC, total_review DESC 
-LIMIT 10;
-
-
 --VALIDATION--VALIDATION--VALIDATION--VALIDATION--VALIDATION--VALIDATION--VALIDATION--VALIDATION--VALIDATION
 
 -- SELECT *
@@ -125,6 +97,7 @@ LIMIT 10;
 
 -- SELECT (4000*10*12)
 -- SELECT (9000*10*12)
+		
 		--I was doing my math wrong. 
 		
 		
@@ -138,7 +111,7 @@ LIMIT 10;
 -- 	psp.genres,
 -- 	psp.rating,
 -- 	psp.price,
--- 	(SELECT (ROUND (psp.rating+sub.rating, 0)/2)/.5) as lifetime
+-- 	(SELECT ROUND (psp.rating+sub.rating, 0)/2) as lifetime
 -- FROM 
 -- 	(SELECT *
 -- 	FROM app_store_apps
@@ -167,3 +140,53 @@ LIMIT 10;
 -- ORDER BY SUM(CAST (review_count as int))/COUNT(name) DESC
 
 		--a potential metric for tie-breaking, calculating the most weighted app genres (app_store only)
+		
+		
+		
+-- SELECT 
+-- 	COUNT(name),
+-- 	category
+-- FROM play_store_apps
+-- GROUP BY category
+-- ORDER BY COUNT(name) DESC
+
+
+-- CASE 
+-- 	WHEN CAST (sub.price as money) + CAST (psp.price AS money) = '0.00' THEN '$10,000.00'
+-- 	WHEN CAST (sub.price as money) + CAST (psp.price AS money) < '1.98' THEN '$10,000.00'
+-- 	WHEN CAST (sub.price as money) < CAST (psp.price AS money) THEN CAST(psp.price AS money)*10000
+-- 	WHEN CAST (sub.price as money) > CAST (psp.price AS money) THEN CAST(sub.price AS money)*10000
+
+SELECT 
+	DISTINCT sub.name as app_name,
+	
+	(SELECT (SUM(CAST(sub.review_count AS int)))) + (SUM(CAST(psp.review_count AS int))) as total_review,
+	
+	CASE 
+		WHEN CAST (sub.price as money) + CAST (psp.price AS money)  BETWEEN '0.00' AND '1.98' THEN '$10,000.00'
+		WHEN CAST (sub.price as money) < CAST (psp.price AS money) THEN CAST(psp.price AS money)*10000
+		WHEN CAST (sub.price as money) >= CAST (psp.price AS money) THEN CAST(sub.price AS money)*10000
+			END AS purchase_price,
+	
+	(SELECT CAST(((ROUND(psp.rating+sub.rating, 0)/2)/.5) + 1 AS int)) as lifespan,
+	
+	(SELECT CAST((((ROUND(psp.rating+sub.rating, 0)/2)/.5) + 1) * 108000 AS money)-
+			(CASE 
+				WHEN CAST (sub.price as money) + CAST (psp.price AS money) BETWEEN '0.00' AND '1.98' THEN '$10,000.00'
+				WHEN CAST (sub.price as money) < CAST (psp.price AS money) THEN CAST(psp.price AS money)*10000
+				WHEN CAST (sub.price as money) >= CAST (psp.price AS money) THEN CAST(sub.price AS money)*10000
+					END)) AS lifetime_profit
+FROM 
+	(SELECT *
+	FROM app_store_apps
+	WHERE name IN
+		(SELECT name
+		FROM app_store_apps
+		INTERSECT
+		SELECT name
+		FROM play_store_apps)) as sub
+INNER JOIN play_store_apps as psp
+USING (name)
+GROUP BY sub.name, sub.rating, psp.rating, purchase_price,lifetime_profit, sub.primary_genre
+ORDER BY lifetime_profit DESC, total_review DESC 
+-- LIMIT 10;
