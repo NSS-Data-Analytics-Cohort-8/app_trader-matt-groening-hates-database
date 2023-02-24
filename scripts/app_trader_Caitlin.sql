@@ -53,4 +53,22 @@ FROM app_store_apps
 INNER JOIN play_store_apps
 ON app_store_apps.name = play_store_apps.name
 GROUP BY app_store_apps.name
+			
+--Improved rounding formula. Also changed filter < $0.50
+
+SELECT app_store.name, 
+	 CAST(app_store.price AS MONEY),
+	 CAST(play_store.price AS MONEY),
+	ROUND(ROUND(AVG((app_store.rating+play_store.rating)/2)/5,1)*5,1) AS avg_rating
+FROM app_store_apps AS app_store
+INNER JOIN play_store_apps AS play_store
+ON app_store.name = play_store.name
+WHERE app_store.rating IS NOT NULL
+	AND play_store.rating IS NOT NULL					
+	AND CAST(app_store.price AS MONEY) < '$0.50'
+	AND CAST(play_store.price AS MONEY)<'$0.50'
+GROUP BY app_store.name, CAST(app_store.price AS MONEY),CAST(play_store.price AS MONEY)
+ORDER by avg_rating DESC
+LIMIT 10;								
+								 
 
