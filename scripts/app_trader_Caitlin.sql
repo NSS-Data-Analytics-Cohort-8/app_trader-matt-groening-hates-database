@@ -73,8 +73,42 @@ ORDER by avg_rating DESC
 LIMIT 10;
 
 
--- NEED to create profit column 
+-- NEED to create profit column. works
 
 SELECT name, price, rating,
 	(SELECT (rating * 2 * 120000) - (10000 * price + rating*2 * 12000)) AS profit
 FROM app_store_Apps
+
+-- SOOOO can order list by profit instead of rating. Don't need price returned either. Add in new subquery.
+-- CTE is working, but need to create boolean statment to condense price into one column.
+
+WITH s1 AS (
+	SELECT app_store.name AS name,
+	ROUND(ROUND(AVG((app_store.rating+play_store.rating)/2)/5,1)*5,1) AS avg_rating
+	FROM app_store_apps AS app_store
+		INNER JOIN play_store_apps AS play_store
+		ON app_store.name = play_store.name
+	GROUP BY app_store.name)
+
+SELECT app_store.name, 
+	(SELECT (s1.avg_rating * 2 * 120000) - (10000 * price + s1.avg_rating*2 * 12000)) AS profit
+FROM app_store_apps AS app_store
+INNER JOIN play_store_apps AS play_store
+ON app_store.name = play_store.name
+INNER JOIN s1
+ON s1.name = play_store.name
+WHERE app_store.rating IS NOT NULL
+	AND play_store.rating IS NOT NULL					
+GROUP BY app_store.name
+ORDER by profit DESC
+
+-- Need to combine price columns. Need to make sure $0.00 does not return null. GOOD!
+SELECT CAST(app_store_apps.price AS MONEY) AS a, CAST(play_store_apps.price AS MONEY) AS p,
+	CASE WHEN CAST(app_store_apps.price AS MONEY) > CAST(play_store_apps.price AS MONEY) 
+	THEN CAST(app_store_apps.price AS MONEY)
+	WHEN CAST(play_store_apps.price AS MONEY) > CAST(app_store_apps.price AS MONEY)
+	THEN CAST(play_store_apps.price AS MONEY) 
+	ELSE '$0.00' END AS true_price
+FROM app_store_apps
+INNER JOIN play_store_apps
+ON app_store_apps.name = play_store_apps.name
