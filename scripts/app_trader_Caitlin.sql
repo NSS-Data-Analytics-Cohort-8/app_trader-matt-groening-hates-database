@@ -1,4 +1,4 @@
--- Query Highest rated games
+/*-- Query Highest rated games
 
 SELECT app_store.name, CAST(app_store.price AS MONEY),CAST(play_store.price AS MONEY), app_store.rating, play_store.rating
 FROM app_store_apps AS app_store
@@ -54,7 +54,8 @@ INNER JOIN play_store_apps
 ON app_store_apps.name = play_store_apps.name
 GROUP BY app_store_apps.name
 			
---Improved rounding formula. Also changed filter < $0.50
+--Improved rounding formula. Also changed filter < $0.50. 
+ --THIS GIVES TOP 10 LIST*/
 
 SELECT app_store.name, 
 	 CAST(app_store.price AS MONEY),
@@ -69,6 +70,11 @@ WHERE app_store.rating IS NOT NULL
 	AND CAST(play_store.price AS MONEY)<'$0.50'
 GROUP BY app_store.name, CAST(app_store.price AS MONEY),CAST(play_store.price AS MONEY)
 ORDER by avg_rating DESC
-LIMIT 10;								
-								 
+LIMIT 10;
 
+
+-- NEED to create profit column 
+
+SELECT name, price, rating,
+	(SELECT (rating * 2 * 120000) - (10000 * price + rating*2 * 12000)) AS profit
+FROM app_store_Apps
