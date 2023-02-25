@@ -35,16 +35,6 @@
 
 --REFERENCE--REFERENCE--REFERENCE--REFERENCE--REFERENCE--REFERENCE--REFERENCE--REFERENCE
 
-SELECT 
-	name,
-	cast(price as money)
-FROM play_store_apps
-WHERE cast(price as money) > '$0.99'
-	AND cast(price as money) < '$1.99'
-
-SELECT *
-FROM app_store_apps
-
 SELECT *
 FROM 
 	(SELECT *
@@ -59,134 +49,83 @@ INNER JOIN play_store_apps as psp
 USING (name)
 WHERE sub.name LIKE 'Solitaire'
 
-						-- SELECT DISTINCT CAST(price AS money),
-						-- 	(SELECT COUNT(CAST(price AS money)))
-						-- FROM play_store_apps
-						-- GROUP BY DISTINCT CAST(price AS money)
-
-						-- SELECT DISTINCT price,
-						-- 	(SELECT COUNT(price))
-						-- FROM app_store_apps
-						-- GROUP BY DISTINCT price
-
-						-- SELECT DISTINCT price,
-						-- 	(SELECT COUNT(price)), price_count
-						-- 	(SELECT ROUND(AVG(rating), 2)) as avg_rating
-						-- 	(SELECT (avg_rating/2)*4000-price*10000)
-						-- FROM app_store_apps
-						-- GROUP BY DISTINCT price
-						
-								--
-
-
---VALIDATION--VALIDATION--VALIDATION--VALIDATION--VALIDATION--VALIDATION--VALIDATION--VALIDATION--VALIDATION
-
--- SELECT *
--- FROM app_store_apps
--- WHERE name IN
--- 	(SELECT 
--- 		name
--- 	 	, CAST(price as money)
--- 	 *
--- 	FROM play_store_apps
--- 	WHERE cast(price as money) > '$0.99'
--- 		AND cast(price as money) < '$1.99')
-		
-		--can't disprove the "asp_price+psp_price < $2.00" part of the CASE/WHEN
-
-
--- SELECT (4000*10*12)
--- SELECT (9000*10*12)
-		
-		--I was doing my math wrong. 
-		
-		
-		
--- 		SELECT ROUND(2.2 * 2, 0) / 2 
--- SELECT 
--- 	sub.name,
--- 	sub.primary_genre,
--- 	sub.rating,
--- 	sub.price,
--- 	psp.genres,
--- 	psp.rating,
--- 	psp.price,
--- 	(SELECT ROUND (psp.rating+sub.rating, 0)/2) as lifetime
--- FROM 
--- 	(SELECT *
--- 	FROM app_store_apps
--- 	WHERE name IN
--- 		(SELECT name
--- 		FROM app_store_apps
--- 		INTERSECT
--- 		SELECT name
--- 		FROM play_store_apps)) as sub
--- INNER JOIN play_store_apps as psp
--- USING (name)
--- ORDER BY lifetime DESC
-
-		--helped clean some of my code. got lost in the sauce with the rounding for LIFESPAN
-		
 
 
 
--- SELECT 
--- 	primary_genre,
--- 	COUNT(name) as app_count,
--- 	SUM(CAST (review_count as int)) as total_reviews,
--- 	SUM(CAST (review_count as int))/COUNT(name) as per_app
--- FROM app_store_apps
--- GROUP BY primary_genre
--- ORDER BY SUM(CAST (review_count as int))/COUNT(name) DESC
-
-		--a potential metric for tie-breaking, calculating the most weighted app genres (app_store only)
-		
-		
-		
--- SELECT 
--- 	COUNT(name),
--- 	category
--- FROM play_store_apps
--- GROUP BY category
--- ORDER BY COUNT(name) DESC
-
-
--- CASE 
--- 	WHEN CAST (sub.price as money) + CAST (psp.price AS money) = '0.00' THEN '$10,000.00'
--- 	WHEN CAST (sub.price as money) + CAST (psp.price AS money) < '1.98' THEN '$10,000.00'
--- 	WHEN CAST (sub.price as money) < CAST (psp.price AS money) THEN CAST(psp.price AS money)*10000
--- 	WHEN CAST (sub.price as money) > CAST (psp.price AS money) THEN CAST(sub.price AS money)*10000
+		-- VVVV a potential metric for tie-breaking, calculating the most ratings by app vvvv
 
 SELECT 
-	DISTINCT sub.name as app_name,
-	
-	(SELECT (SUM(CAST(sub.review_count AS int)))) + (SUM(CAST(psp.review_count AS int))) as total_review,
-	
-	CASE 
-		WHEN CAST (sub.price as money) + CAST (psp.price AS money)  BETWEEN '0.00' AND '1.98' THEN '$10,000.00'
-		WHEN CAST (sub.price as money) < CAST (psp.price AS money) THEN CAST(psp.price AS money)*10000
-		WHEN CAST (sub.price as money) >= CAST (psp.price AS money) THEN CAST(sub.price AS money)*10000
-			END AS purchase_price,
-	
-	(SELECT CAST(((ROUND(psp.rating+sub.rating, 0)/2)/.5) + 1 AS int)) as lifespan,
-	
-	(SELECT CAST((((ROUND(psp.rating+sub.rating, 0)/2)/.5) + 1) * 108000 AS money)-
-			(CASE 
-				WHEN CAST (sub.price as money) + CAST (psp.price AS money) BETWEEN '0.00' AND '1.98' THEN '$10,000.00'
-				WHEN CAST (sub.price as money) < CAST (psp.price AS money) THEN CAST(psp.price AS money)*10000
-				WHEN CAST (sub.price as money) >= CAST (psp.price AS money) THEN CAST(sub.price AS money)*10000
-					END)) AS lifetime_profit
+	primary_genre,
+-- 	genres,
+	COUNT(DISTINCT sub.name) as app_count,
+	SUM(CAST(sub.review_count AS int)) + SUM(CAST(psp.review_count AS int)) as total_review,
+	(SUM(CAST(sub.review_count AS int)) + SUM(CAST(psp.review_count AS int))) /COUNT(DISTINCT sub.name) as per_app
 FROM 
 	(SELECT *
 	FROM app_store_apps
 	WHERE name IN
 		(SELECT name
-		FROM app_store_apps
-		INTERSECT
-		SELECT name
 		FROM play_store_apps)) as sub
 INNER JOIN play_store_apps as psp
 USING (name)
-GROUP BY sub.name, sub.rating, psp.rating, purchase_price,lifetime_profit, sub.primary_genre
+GROUP BY primary_genre
+-- 			, genres
+ORDER BY per_app DESC
+
+
+
+		-- VVVV another alternative metric, calculating lifetime profit by genre
+
+SELECT 
+	COUNT(DISTINCT sub.name) as app_count,
+	primary_genre,
+	ROUND((AVG(sub.rating+psp.rating)/2), 2) as avg_rating,
+	CAST(((ROUND((AVG(sub.rating)+AVG(psp.rating)), 0)/2)/0.5)+1 as int)  as avg_lifespan,
+	ROUND(AVG(sub.price+CAST(REPLACE(psp.price, '$', '') as numeric))/2,2) as avg_price,
+	CAST((((ROUND(AVG(sub.rating+psp.rating), 0)/2)/0.5)+1)*108000 AS money) -
+			CASE
+				WHEN CAST(ROUND(AVG(sub.price+CAST(REPLACE(psp.price, '$', '') as numeric))/2,2) AS money) <= '1.00' THEN '10,000'
+				ELSE CAST(ROUND(AVG(sub.price+CAST(REPLACE(psp.price, '$', '') as numeric))/2,2) AS money) *10000 
+				END as lifetime_profit
+FROM	
+	(SELECT *
+	FROM app_store_apps
+	WHERE name IN
+		(SELECT name
+		FROM play_store_apps)) as sub
+INNER JOIN play_store_apps as psp
+USING (name)
+GROUP BY primary_genre
+ORDER BY lifetime_profit DESC, app_count DESC;
+
+
+		-- Top 10, ordered by lifetime profit, followed by highest review count
+
+SELECT 
+	DISTINCT sub.name as app_name,
+	SUM(CAST(sub.review_count AS int)) + SUM(CAST(psp.review_count AS int)) as total_review,
+	CASE 
+		WHEN CAST (sub.price as money) + CAST (psp.price AS money)  BETWEEN '0.00' AND '1.98' THEN '$10,000.00'
+		WHEN CAST (sub.price as money) < CAST (psp.price AS money) THEN CAST(psp.price AS money)*10000
+		WHEN CAST (sub.price as money) >= CAST (psp.price AS money) THEN CAST(sub.price AS money)*10000
+			END AS purchase_price,	
+	CAST(((ROUND(psp.rating+sub.rating, 0)/2)/.5) + 1 AS int) as lifespan,
+	CAST((((ROUND(psp.rating+sub.rating, 0)/2)/.5) + 1) * 108000 AS money)-
+			(CASE 
+				WHEN CAST (sub.price as money) + CAST (psp.price AS money) BETWEEN '0.00' AND '1.98' THEN '$10,000.00'
+				WHEN CAST (sub.price as money) < CAST (psp.price AS money) THEN CAST(psp.price AS money)*10000
+				WHEN CAST (sub.price as money) >= CAST (psp.price AS money) THEN CAST(sub.price AS money)*10000
+					END) AS lifetime_profit
+FROM 
+	(SELECT *
+	FROM app_store_apps
+	WHERE name IN
+		(SELECT name
+		FROM play_store_apps)) as sub
+INNER JOIN play_store_apps as psp
+USING (name)
+GROUP BY sub.name, sub.rating, psp.rating, purchase_price, lifetime_profit
 ORDER BY lifetime_profit DESC, total_review DESC 
--- LIMIT 10;
+LIMIT 10;
+
+
