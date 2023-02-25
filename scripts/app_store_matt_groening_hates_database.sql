@@ -47,12 +47,12 @@ FROM
 		FROM play_store_apps)) as sub
 INNER JOIN play_store_apps as psp
 USING (name)
-WHERE sub.name LIKE 'Solitaire'
+-- WHERE sub.name LIKE 'Solitaire'
 
 
 
 
-		-- VVVV a potential metric for tie-breaking, calculating the most ratings by app vvvv
+		-- VVVV a potential metric for tie-breaking, calculating the most ratings by app/engagement
 
 SELECT 
 	primary_genre,
@@ -68,24 +68,28 @@ FROM
 		FROM play_store_apps)) as sub
 INNER JOIN play_store_apps as psp
 USING (name)
-GROUP BY primary_genre
--- 			, genres
+GROUP BY 
+primary_genre
+-- genres
 ORDER BY per_app DESC
 
 
 
 		-- VVVV another alternative metric, calculating lifetime profit by genre
+				--Or really any metric. 
+				--It's more of a hammer than a scalpel though.
 
 SELECT 
 	COUNT(DISTINCT sub.name) as app_count,
 	primary_genre,
+-- 	psp.content_rating,
 	ROUND((AVG(sub.rating+psp.rating)/2), 2) as avg_rating,
 	CAST(((ROUND((AVG(sub.rating)+AVG(psp.rating)), 0)/2)/0.5)+1 as int)  as avg_lifespan,
 	ROUND(AVG(sub.price+CAST(REPLACE(psp.price, '$', '') as numeric))/2,2) as avg_price,
 	CAST((((ROUND(AVG(sub.rating+psp.rating), 0)/2)/0.5)+1)*108000 AS money) -
 			CASE
-				WHEN CAST(ROUND(AVG(sub.price+CAST(REPLACE(psp.price, '$', '') as numeric))/2,2) AS money) <= '1.00' THEN '10,000'
-				ELSE CAST(ROUND(AVG(sub.price+CAST(REPLACE(psp.price, '$', '') as numeric))/2,2) AS money) *10000 
+				WHEN CAST (ROUND(AVG(sub.price+CAST(REPLACE(psp.price, '$', '') as numeric))/2,2) AS money) <= '1.00' THEN '10,000'
+				ELSE CAST (ROUND(AVG(sub.price+CAST(REPLACE(psp.price, '$', '') as numeric))/2,2) AS money) *10000 
 				END as lifetime_profit
 FROM	
 	(SELECT *
@@ -95,9 +99,16 @@ FROM
 		FROM play_store_apps)) as sub
 INNER JOIN play_store_apps as psp
 USING (name)
-GROUP BY primary_genre
+-- WHERE primary_genre = 'Games'
+GROUP BY 
+	primary_genre
+-- 	psp.content_rating
 ORDER BY lifetime_profit DESC, app_count DESC;
 
+	
+		
+
+		
 
 		-- Top 10, ordered by lifetime profit, followed by highest review count
 
