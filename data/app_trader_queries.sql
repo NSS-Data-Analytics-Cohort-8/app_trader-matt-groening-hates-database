@@ -16,7 +16,7 @@ from (
 	select
 		app_name,
 		round(((apple_rating + google_rating) / 2) / 0.5, 0) * 0.5 as rounded_combined_rating,
-		cast(((round(((apple_rating + google_rating) / 2) / 0.5, 0) * 0.5) / 0.5 ) * 1 as integer) as app_lifetime_expectancy_in_years,
+		cast(((round(((apple_rating + google_rating) / 2) / 0.5, 0) * 0.5) / 0.5 ) + 1 as integer) as app_lifetime_expectancy_in_years,
 		cast(apple_price as money),
 		cast(google_price as money),
 		case
@@ -27,7 +27,7 @@ from (
 			when cast(right(google_price, -1) as money)::numeric::int <= 1 then cast(10000 * 1 as money)
 			else cast(10000 * cast(right(google_price, -1) as money) as money)
 		end as google_purchase_price,
-		cast((10000 - 1000) * ((((round(((apple_rating + google_rating) / 2) / 0.5, 0) * 0.5) / 0.5 ) * 1) * 12) as money) as app_lifetime_estimated_income
+		cast((10000 - 1000) * ((((round(((apple_rating + google_rating) / 2) / 0.5, 0) * 0.5) / 0.5 ) + 1) * 12) as money) as app_lifetime_estimated_income
 	from (
 		select
 			asa.name as app_name,
