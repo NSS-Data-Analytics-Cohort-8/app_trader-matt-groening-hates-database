@@ -57,7 +57,7 @@ GROUP BY app_store_apps.name
 --Improved rounding formula. Also changed filter < $0.50. 
  --THIS GIVES TOP 10 LIST*/
 
-SELECT app_store.name, 
+/*SELECT app_store.name, 
 	 CAST(app_store.price AS MONEY),
 	 CAST(play_store.price AS MONEY),
 	ROUND(ROUND(AVG((app_store.rating+play_store.rating)/2)/5,1)*5,1) AS avg_rating
@@ -83,15 +83,16 @@ FROM app_store_Apps
 -- CTE is working, but need to create boolean statment to condense price into one column.
 
 WITH s1 AS (
-	SELECT app_store.name AS name,
+	SELECT app_store.name,
 	ROUND(ROUND(AVG((app_store.rating+play_store.rating)/2)/5,1)*5,1) AS avg_rating
 	FROM app_store_apps AS app_store
 		INNER JOIN play_store_apps AS play_store
 		ON app_store.name = play_store.name
-	GROUP BY app_store.name)
+	GROUP BY app_store.name
+ORDER BY avg_rating DESC)
 
 SELECT app_store.name, 
-	(SELECT (s1.avg_rating * 2 * 120000) - (10000 * price + s1.avg_rating*2 * 12000)) AS profit
+	 (s1.avg_rating * 2 * 120000) - (10000 * app_store.price + s1.avg_rating*2 * 12000) AS profit
 FROM app_store_apps AS app_store
 INNER JOIN play_store_apps AS play_store
 ON app_store.name = play_store.name
@@ -99,7 +100,7 @@ INNER JOIN s1
 ON s1.name = play_store.name
 WHERE app_store.rating IS NOT NULL
 	AND play_store.rating IS NOT NULL					
-GROUP BY app_store.name
+GROUP BY app_store.name, s1.avg_rating, app_store.price
 ORDER by profit DESC
 
 -- Need to combine price columns. Need to make sure $0.00 does not return null. GOOD!
@@ -108,43 +109,71 @@ SELECT CAST(app_store_apps.price AS MONEY) AS a, CAST(play_store_apps.price AS M
 	THEN CAST(app_store_apps.price AS MONEY)
 	WHEN CAST(play_store_apps.price AS MONEY) > CAST(app_store_apps.price AS MONEY)
 	THEN CAST(play_store_apps.price AS MONEY) 
-	ELSE '$0.00' END AS true_price
+	ELSE CAST(play_store_apps.price AS MONEY) END AS true_price
 FROM app_store_apps
 INNER JOIN play_store_apps
-ON app_store_apps.name = play_store_apps.name
+ON app_store_apps.name = play_store_apps.name*/
 
---adding it all together now.
+--adding it all together now. GOT IT WORKING
 
-WITH s1 AS (
-	SELECT app_store.name AS name,
-	ROUND(ROUND(AVG((app_store.rating+play_store.rating)/2)/5,1)*5,1) AS avg_rating
-	FROM app_store_apps AS app_store
-		INNER JOIN play_store_apps AS play_store
-		ON app_store.name = play_store.name
-	GROUP BY app_store.name
-	ORDER BY avg_rating DESC),
+ WITH s1 AS (
+ 	SELECT app_store.name AS name,
+ 	ROUND(ROUND(AVG((app_store.rating+play_store.rating)/2)/5,1)*5,1) AS avg_rating
+ 	FROM app_store_apps AS app_store
+ 		INNER JOIN play_store_apps AS play_store
+ 		ON app_store.name = play_store.name
+ 	GROUP BY app_store.name
+ 	ORDER BY avg_rating DESC),
 	
-	 s2 AS (
-	SELECT app_store_apps.name,
-	CASE WHEN CAST(app_store_apps.price AS MONEY) > CAST(play_store_apps.price AS MONEY) 
-	THEN CAST(app_store_apps.price AS MONEY)
-	WHEN CAST(play_store_apps.price AS MONEY) > CAST(app_store_apps.price AS MONEY)
-	THEN CAST(play_store_apps.price AS MONEY) 
-	ELSE '$0.00' END AS true_price
-FROM app_store_apps
-INNER JOIN play_store_apps
-ON app_store_apps.name = play_store_apps.name)
+	s2 AS (
+ 	SELECT app_store_apps.name,
+ 	CASE WHEN CAST(app_store_apps.price AS MONEY) > CAST(play_store_apps.price AS MONEY) 
+ 	THEN CAST(app_store_apps.price AS MONEY)
+ 	WHEN CAST(play_store_apps.price AS MONEY) > CAST(app_store_apps.price AS MONEY)
+ 	THEN CAST(play_store_apps.price AS MONEY) 
+ 	ELSE CAST(play_store_apps.price AS MONEY) END AS true_price
+ 	FROM app_store_apps
+	 INNER JOIN play_store_apps
+	 ON app_store_apps.name = play_store_apps.name)
 
-SELECT app_store.name,s1.avg_rating,
-	 (s1.avg_rating * 2 * 120000) - (10000 * CAST(true_price AS NUMERIC) + s1.avg_rating*2 * 12000) AS profit
-FROM app_store_apps AS app_store
-INNER JOIN play_store_apps AS play_store
-ON app_store.name = play_store.name
-INNER JOIN s1
-ON s1.name = play_store.name
-INNER JOIN s2
-ON app_store.name = play_store.name
-WHERE app_store.rating IS NOT NULL
-	AND play_store.rating IS NOT NULL					
-GROUP BY app_store.name, s1.avg_rating, true_price
-ORDER by profit DESC
+ SELECT app_store.name, 
+ ROUND(ROUND(AVG((CAST(app_store.review_count AS INT)+play_store.review_count)/2)/5,1)*5,1) AS 		 avg_review_count,
+ 	 ((s1.avg_rating +.5)* 2 * 120000) - (10000 * CAST(true_price AS NUMERIC) + (s1.avg_rating +.5) * 2 * 12000) AS profit
+ FROM app_store_apps AS app_store
+ INNER JOIN play_store_apps AS play_store
+ ON app_store.name = play_store.name
+ INNER JOIN s1
+ ON s1.name = app_store.name
+ INNER JOIN s2
+ ON s2.name = app_store.name
+ WHERE app_store.rating IS NOT NULL
+ 	AND play_store.rating IS NOT NULL
+ GROUP BY app_store.name, s1.avg_rating, true_price
+ ORDER by profit DESC , avg_review_count DESC
+
+
+-- This is older query that is pulling pretty correctly. Need to add in my case when but not in a cte form maybe.
+
+-- WITH s1 AS (
+-- 	SELECT app_store.name,
+-- 	ROUND(ROUND(AVG((app_store.rating+play_store.rating)/2)/5,1)*5,1) AS avg_rating
+-- 	FROM app_store_apps AS app_store
+-- 		INNER JOIN play_store_apps AS play_store
+-- 		ON app_store.name = play_store.name
+-- 	GROUP BY app_store.name
+-- ORDER BY avg_rating DESC)
+
+-- SELECT app_store.name,s1.avg_rating,
+-- 	 (s1.avg_rating * 2 * 120000) - (10000 * app_store.price + s1.avg_rating*2 * 12000) AS profit
+-- FROM app_store_apps AS app_store
+-- 	INNER JOIN play_store_apps AS play_store
+-- 	ON app_store.name = play_store.name
+-- 	INNER JOIN s1
+-- 	ON s1.name = play_store.name
+-- WHERE app_store.rating IS NOT NULL
+-- 	AND play_store.rating IS NOT NULL
+-- GROUP BY app_store.name, s1.avg_rating, app_store.price, play_store.price
+-- ORDER by profit DESC
+
+
+-- EXPLORATORY TO FILTER LIST DONW MORE
